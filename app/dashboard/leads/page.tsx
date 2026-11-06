@@ -3,7 +3,7 @@
 import { useEffect, useState, useMemo } from "react";
 import { createClient } from "@/utils/client";
 import { useRouter } from "next/navigation"; 
-import { showToast } from "@/utils/toast"; // <-- IMPORTAMOS EL TOAST
+import { showToast } from "@/utils/toast"; 
 
 type Lead = {
   id: string;
@@ -92,9 +92,9 @@ export default function LeadsPage() {
       setBudget(""); setPersonas(""); setFecha(""); setDuracion("");
       setIsModalOpen(false);
       await fetchLeads();
-      showToast("Lead creado con éxito", "success"); // <-- TOAST
+      showToast("Lead creado con éxito", "success"); 
     } else { 
-      showToast("Error al crear lead: " + error.message, "error"); // <-- TOAST
+      showToast("Error al crear lead: " + error.message, "error"); 
     }
     setSaving(false);
   };
@@ -104,9 +104,9 @@ export default function LeadsPage() {
     const { error } = await supabase.from("leads").delete().eq("id", id);
     if (!error) {
       await fetchLeads();
-      showToast("Lead eliminado", "success"); // <-- TOAST
+      showToast("Lead eliminado", "success"); 
     } else {
-      showToast("Error al eliminar: " + error.message, "error"); // <-- TOAST
+      showToast("Error al eliminar: " + error.message, "error"); 
     }
   };
 
@@ -126,7 +126,7 @@ export default function LeadsPage() {
       if (!response.ok) throw new Error(data.error);
       setAiData(data);
     } catch (err) {
-      showToast("Error: " + (err instanceof Error ? err.message : "Desconocido"), "error"); // <-- TOAST
+      showToast("Error: " + (err instanceof Error ? err.message : "Desconocido"), "error"); 
       setIsAiModalOpen(false);
     } finally { setGeneratingAi(false); }
   };
@@ -148,26 +148,26 @@ export default function LeadsPage() {
       
       setAutoResult(data);
       await fetchLeads();
-      showToast("Propuesta creada automáticamente", "success"); // <-- TOAST
+      showToast("Propuesta creada automáticamente", "success"); 
     } catch (err) {
-      showToast("Error: " + (err instanceof Error ? err.message : "Desconocido"), "error"); // <-- TOAST
+      showToast("Error: " + (err instanceof Error ? err.message : "Desconocido"), "error"); 
       setIsAutoModalOpen(false);
     } finally { setAutoLoading(false); }
   };
 
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
-    showToast("Mensaje copiado al portapapeles", "success"); // <-- TOAST en lugar de alert
+    showToast("Mensaje copiado al portapapeles", "success"); 
   };
 
   return (
     <div className="space-y-6 relative">
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h1 className="text-3xl font-bold text-white">Leads (CRM)</h1>
           <p className="text-slate-400 mt-1">Gestiona los contactos interesados.</p>
         </div>
-        <button onClick={() => setIsModalOpen(true)} className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors">
+        <button onClick={() => setIsModalOpen(true)} className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors w-full sm:w-auto">
           + Añadir Lead
         </button>
       </div>
@@ -175,69 +175,72 @@ export default function LeadsPage() {
       {error && <div className="bg-red-500/10 border border-red-500 text-red-500 p-4 rounded-lg">Error: {error}</div>}
 
       <div className="bg-slate-800 rounded-xl border border-slate-700 overflow-hidden">
-        <table className="w-full text-left border-collapse">
-          <thead>
-            <tr className="bg-slate-900/50 text-slate-400 text-sm border-b border-slate-700">
-              <th className="px-6 py-4 font-medium">Nombre</th>
-              <th className="px-6 py-4 font-medium">Contacto</th>
-              <th className="px-6 py-4 font-medium">Detalles Solicitud</th>
-              <th className="px-6 py-4 font-medium">Estado</th>
-              <th className="px-6 py-4 font-medium text-right">Acciones</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-700/50">
-            {loading ? (
-              <tr><td colSpan={5} className="px-6 py-8 text-center text-slate-400">Cargando...</td></tr>
-            ) : leads.length === 0 ? (
-              <tr><td colSpan={5} className="px-6 py-8 text-center text-slate-400">No hay leads registrados.</td></tr>
-            ) : (
-              leads.map((lead) => (
-                <tr key={lead.id} className="hover:bg-slate-700/20 transition-colors">
-                  <td className="px-6 py-4 font-medium text-white">
-                    {lead.first_name} {lead.last_name}
-                    <span className="block text-xs text-slate-500 mt-1">{lead.source}</span>
-                  </td>
-                  <td className="px-6 py-4 text-slate-300">
-                    {lead.email && <div>{lead.email}</div>}
-                    {lead.phone && <div className="text-sm text-slate-400">{lead.phone}</div>}
-                  </td>
-                  <td className="px-6 py-4 text-slate-300 text-sm">
-                    <div className="flex flex-col gap-1">
-                      {lead.personas && <span>👥 {lead.personas} pax</span>}
-                      {lead.budget && <span>💶 {lead.budget} €</span>}
-                      {lead.fecha && <span>📅 {lead.fecha}</span>}
-                    </div>
-                  </td>
-                  <td className="px-6 py-4">
-                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border uppercase ${
-                      lead.status === 'convertido' ? "bg-green-500/10 text-green-400 border-green-500/20" : "bg-blue-500/10 text-blue-400 border-blue-500/20"
-                    }`}>
-                      {lead.status}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 text-right space-x-2">
-                    {lead.status !== 'convertido' && (
-                      <>
-                        <button onClick={() => handleAutoProposal(lead)} className="text-white bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-sm font-bold px-3 py-1.5 rounded-md transition-all shadow-lg shadow-purple-500/20">
-                          🤖 Auto-Propuesta
-                        </button>
-                        <button onClick={() => handleGenerateAiMessage(lead)} className="text-white bg-slate-600 hover:bg-slate-500 text-sm font-medium px-3 py-1.5 rounded-md transition-colors">
-                          ✨ Analizar
-                        </button>
-                      </>
-                    )}
-                    <button onClick={() => handleDeleteLead(lead.id)} className="text-red-400 hover:text-red-300 text-sm font-medium px-3 py-1 bg-red-500/10 rounded-md transition-colors">
-                      🗑️
-                    </button>
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
+        {/* AQUI ESTA EL TRUCO PARA EL MOVIL: overflow-x-auto */}
+        <div className="overflow-x-auto">
+          <table className="w-full text-left border-collapse whitespace-nowrap">
+            <thead>
+              <tr className="bg-slate-900/50 text-slate-400 text-sm border-b border-slate-700">
+                <th className="px-6 py-4 font-medium">Nombre</th>
+                <th className="px-6 py-4 font-medium">Contacto</th>
+                <th className="px-6 py-4 font-medium">Detalles Solicitud</th>
+                <th className="px-6 py-4 font-medium">Estado</th>
+                <th className="px-6 py-4 font-medium text-right">Acciones</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-700/50">
+              {loading ? (
+                <tr><td colSpan={5} className="px-6 py-8 text-center text-slate-400">Cargando...</td></tr>
+              ) : leads.length === 0 ? (
+                <tr><td colSpan={5} className="px-6 py-8 text-center text-slate-400">No hay leads registrados.</td></tr>
+              ) : (
+                leads.map((lead) => (
+                  <tr key={lead.id} className="hover:bg-slate-700/20 transition-colors">
+                    <td className="px-6 py-4 font-medium text-white">
+                      {lead.first_name} {lead.last_name}
+                      <span className="block text-xs text-slate-500 mt-1">{lead.source}</span>
+                    </td>
+                    <td className="px-6 py-4 text-slate-300">
+                      {lead.email && <div>{lead.email}</div>}
+                      {lead.phone && <div className="text-sm text-slate-400">{lead.phone}</div>}
+                    </td>
+                    <td className="px-6 py-4 text-slate-300 text-sm">
+                      <div className="flex flex-col gap-1">
+                        {lead.personas && <span>👥 {lead.personas} pax</span>}
+                        {lead.budget && <span>💶 {lead.budget} €</span>}
+                        {lead.fecha && <span>📅 {lead.fecha}</span>}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border uppercase ${
+                        lead.status === 'convertido' ? "bg-green-500/10 text-green-400 border-green-500/20" : "bg-blue-500/10 text-blue-400 border-blue-500/20"
+                      }`}>
+                        {lead.status}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 text-right space-x-2">
+                      {lead.status !== 'convertido' && (
+                        <>
+                          <button onClick={() => handleAutoProposal(lead)} className="text-white bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-sm font-bold px-3 py-1.5 rounded-md transition-all shadow-lg shadow-purple-500/20">
+                            🤖 Auto-Propuesta
+                          </button>
+                          <button onClick={() => handleGenerateAiMessage(lead)} className="text-white bg-slate-600 hover:bg-slate-500 text-sm font-medium px-3 py-1.5 rounded-md transition-colors">
+                            ✨ Analizar
+                          </button>
+                        </>
+                      )}
+                      <button onClick={() => handleDeleteLead(lead.id)} className="text-red-400 hover:text-red-300 text-sm font-medium px-3 py-1 bg-red-500/10 rounded-md transition-colors">
+                        🗑️
+                      </button>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
 
-      {/* MODAL CREAR LEAD */}
+      {/* MODAL CREAR LEAD (Ajustado para móvil) */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
           <div className="bg-slate-800 rounded-xl border border-slate-700 shadow-2xl w-full max-w-lg overflow-hidden max-h-[90vh] flex flex-col">
@@ -246,19 +249,19 @@ export default function LeadsPage() {
               <button onClick={() => setIsModalOpen(false)} className="text-slate-400 hover:text-white text-2xl leading-none">&times;</button>
             </div>
             <form onSubmit={handleAddLead} className="p-6 space-y-4 overflow-y-auto">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <input type="text" required placeholder="Nombre" value={firstName} onChange={e => setFirstName(e.target.value)} className="w-full bg-slate-900 text-white px-4 py-2 rounded border border-slate-700" />
                 <input type="text" required placeholder="Apellido" value={lastName} onChange={e => setLastName(e.target.value)} className="w-full bg-slate-900 text-white px-4 py-2 rounded border border-slate-700" />
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <input type="email" placeholder="Email" value={email} onChange={e => setEmail(e.target.value)} className="w-full bg-slate-900 text-white px-4 py-2 rounded border border-slate-700" />
                 <input type="tel" placeholder="Teléfono" value={phone} onChange={e => setPhone(e.target.value)} className="w-full bg-slate-900 text-white px-4 py-2 rounded border border-slate-700" />
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <input type="text" placeholder="Nº Personas" value={personas} onChange={e => setPersonas(e.target.value)} className="w-full bg-slate-900 text-white px-4 py-2 rounded border border-slate-700" />
                 <input type="number" placeholder="Presupuesto (€)" value={budget} onChange={e => setBudget(e.target.value)} className="w-full bg-slate-900 text-white px-4 py-2 rounded border border-slate-700" />
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <input type="date" value={fecha} onChange={e => setFecha(e.target.value)} className="w-full bg-slate-900 text-white px-4 py-2 rounded border border-slate-700" />
                 <select value={duracion} onChange={e => setDuracion(e.target.value)} className="w-full bg-slate-900 text-white px-4 py-2 rounded border border-slate-700">
                   <option value="">Duración...</option>
@@ -284,17 +287,17 @@ export default function LeadsPage() {
       {/* MODAL AUTO PROPUESTA */}
       {isAutoModalOpen && selectedLead && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
-          <div className="bg-slate-800 rounded-xl border border-slate-700 shadow-2xl w-full max-w-lg overflow-hidden">
-            <div className="flex justify-between items-center p-6 border-b border-slate-700 bg-gradient-to-r from-purple-900/50 to-blue-900/50">
+          <div className="bg-slate-800 rounded-xl border border-slate-700 shadow-2xl w-full max-w-lg overflow-hidden max-h-[90vh] flex flex-col">
+            <div className="flex justify-between items-center p-6 border-b border-slate-700 bg-gradient-to-r from-purple-900/50 to-blue-900/50 shrink-0">
               <h2 className="text-xl font-bold text-white flex items-center gap-2">🤖 Propuesta Automatizada</h2>
               <button onClick={() => setIsAutoModalOpen(false)} className="text-slate-400 hover:text-white text-2xl leading-none">&times;</button>
             </div>
             
-            <div className="p-6">
+            <div className="p-6 overflow-y-auto">
               {autoLoading ? (
                 <div className="flex flex-col items-center justify-center py-10">
                   <div className="w-10 h-10 border-4 border-purple-500 border-t-transparent rounded-full animate-spin mb-4"></div>
-                  <p className="text-purple-300 font-medium animate-pulse">Buscando barco, creando propuesta y redactando...</p>
+                  <p className="text-purple-300 font-medium animate-pulse text-center">Buscando barco, creando propuesta y redactando...</p>
                 </div>
               ) : autoResult && (
                 <div className="space-y-4">
@@ -310,7 +313,7 @@ export default function LeadsPage() {
                     </div>
                   </div>
 
-                  <div className="flex gap-3">
+                  <div className="flex flex-col sm:flex-row gap-3 pt-2">
                     <button onClick={() => copyToClipboard(autoResult.message)} className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 rounded-lg transition-colors">
                       📋 Copiar Mensaje
                     </button>
@@ -341,7 +344,7 @@ export default function LeadsPage() {
                 </div>
               ) : aiData && (
                 <div className="space-y-5">
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="bg-slate-900 border border-slate-700 p-4 rounded-lg">
                       <p className="text-xs text-slate-400 font-bold uppercase mb-1">Temperatura</p>
                       <div className="flex items-center gap-2">

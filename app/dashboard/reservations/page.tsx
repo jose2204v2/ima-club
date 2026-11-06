@@ -3,7 +3,7 @@
 import { useEffect, useState, useMemo } from "react";
 import { createClient } from "@/utils/client";
 import Image from "next/image";
-import { showToast } from "@/utils/toast"; // <-- IMPORTAMOS EL TOAST
+import { showToast } from "@/utils/toast"; 
 
 type Reservation = { 
   id: string; 
@@ -118,9 +118,9 @@ export default function ReservationsPage() {
       
       await supabase.from("reservations").update({ status: 'confirmada' }).eq("id", res.id);
       await fetchData();
-      showToast(`Depósito de ${depositAmount.toFixed(2)}€ cobrado`, "success"); // <-- TOAST
+      showToast(`Depósito de ${depositAmount.toFixed(2)}€ cobrado`, "success");
     } catch (err) { 
-      showToast("Error: " + (err instanceof Error ? err.message : "Desconocido"), "error"); // <-- TOAST
+      showToast("Error: " + (err instanceof Error ? err.message : "Desconocido"), "error"); 
     } finally { setProcessingId(null); }
   };
 
@@ -137,9 +137,9 @@ export default function ReservationsPage() {
       
       await supabase.from("reservations").update({ status: 'pagada' }).eq("id", res.id);
       await fetchData();
-      showToast(`Saldo de ${exactAmount.toFixed(2)}€ cobrado`, "success"); // <-- TOAST
+      showToast(`Saldo de ${exactAmount.toFixed(2)}€ cobrado`, "success");
     } catch (err) { 
-      showToast("Error: " + (err instanceof Error ? err.message : "Desconocido"), "error"); // <-- TOAST
+      showToast("Error: " + (err instanceof Error ? err.message : "Desconocido"), "error"); 
     } finally { setProcessingId(null); }
   };
 
@@ -176,18 +176,18 @@ export default function ReservationsPage() {
     }]).select(`*, extras(name, price)`).single();
 
     if (error) {
-      showToast("Error al añadir el extra: " + error.message, "error"); // <-- TOAST
+      showToast("Error al añadir el extra: " + error.message, "error");
     } else if (data) {
       setSelectedExtras([...selectedExtras, data]);
       const newTotal = (Number(selectedRes.total_price) || 0) + (Number(extra.price) || 0);
       const { error: updateError } = await supabase.from("reservations").update({ total_price: newTotal }).eq("id", selectedRes.id);
       
       if (updateError) {
-        showToast("Error al actualizar total: " + updateError.message, "error"); // <-- TOAST
+        showToast("Error al actualizar total: " + updateError.message, "error");
       } else {
         setSelectedRes({ ...selectedRes, total_price: newTotal });
         await fetchData();
-        showToast("Extra añadido a la reserva", "success"); // <-- TOAST
+        showToast("Extra añadido a la reserva", "success");
       }
     }
     setSavingExtra(false);
@@ -202,7 +202,7 @@ export default function ReservationsPage() {
       await supabase.from("reservations").update({ total_price: newTotal }).eq("id", selectedRes.id);
       setSelectedRes({ ...selectedRes, total_price: newTotal });
       await fetchData();
-      showToast("Extra eliminado", "success"); // <-- TOAST
+      showToast("Extra eliminado", "success");
     }
   };
 
@@ -237,13 +237,11 @@ export default function ReservationsPage() {
         const { data } = await supabase.from("contracts").insert([{ reservation_id: selectedRes.id, status: 'firmado', signed_at: new Date().toISOString(), signed_by: signatureName, version: 'v1.0' }]).select().single();
         if (data) setContract(data);
       }
-      showToast("¡Contrato firmado con éxito!", "success"); // <-- TOAST
+      showToast("¡Contrato firmado con éxito!", "success");
       await openDetailsModal(selectedRes);
-       } catch (err) {
+    } catch (err) { 
       showToast("Error al firmar contrato: " + (err instanceof Error ? err.message : "Desconocido"), "error");
-    } finally { 
-      setSigningContract(false); 
-    }
+    } finally { setSigningContract(false); }
   };
 
   const handleAddIncident = async (e: React.FormEvent) => {
@@ -256,7 +254,7 @@ export default function ReservationsPage() {
   const handleResolveIncident = async (id: string) => {
     await supabase.from("incidents").update({ status: 'resuelta' }).eq("id", id);
     setIncidents(incidents.map(i => i.id === id ? { ...i, status: 'resuelta' } : i));
-    showToast("Incidencia resuelta", "success"); // <-- TOAST
+    showToast("Incidencia resuelta", "success");
   };
 
   const handleAddTip = async (e: React.FormEvent) => {
@@ -268,7 +266,7 @@ export default function ReservationsPage() {
 
   return (
     <div className="space-y-6 relative">
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h1 className="text-3xl font-bold text-white">Reservas</h1>
           <p className="text-slate-400 mt-1">Controla las salidas confirmadas y pendientes.</p>
@@ -278,78 +276,82 @@ export default function ReservationsPage() {
       {error && <div className="bg-red-500/10 border border-red-500 text-red-500 p-4 rounded-lg">Error: {error}</div>}
 
       <div className="bg-slate-800 rounded-xl border border-slate-700 overflow-hidden">
-        <table className="w-full text-left border-collapse">
-          <thead>
-            <tr className="bg-slate-900/50 text-slate-400 text-sm border-b border-slate-700">
-              <th className="px-6 py-4 font-medium">Cliente</th>
-              <th className="px-6 py-4 font-medium">Barco</th>
-              <th className="px-6 py-4 font-medium">Fecha</th>
-              <th className="px-6 py-4 font-medium">Total</th>
-              <th className="px-6 py-4 font-medium">Estado</th>
-              <th className="px-6 py-4 font-medium text-right">Acciones</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-700/50">
-            {loading ? (
-              <tr><td colSpan={6} className="px-6 py-8 text-center text-slate-400">Cargando...</td></tr>
-            ) : reservations.length === 0 ? (
-              <tr><td colSpan={6} className="px-6 py-8 text-center text-slate-400">No hay reservas registradas.</td></tr>
-            ) : (
-              reservations.map((r) => {
-                const totalPrice = Number(r.total_price) || 0;
-                const pagosDeEstaReserva = payments.filter(p => p.reservation_id === r.id && p.status === 'completado');
-                const totalPaid = pagosDeEstaReserva.reduce((acc, curr) => acc + (Number(curr.amount) || 0), 0);
-                const pending = Math.round((totalPrice - totalPaid) * 100) / 100;
+        {/* SCROLL HORIZONTAL PARA MOVIL */}
+        <div className="overflow-x-auto">
+          <table className="w-full text-left border-collapse whitespace-nowrap">
+            <thead>
+              <tr className="bg-slate-900/50 text-slate-400 text-sm border-b border-slate-700">
+                <th className="px-6 py-4 font-medium">Cliente</th>
+                <th className="px-6 py-4 font-medium">Barco</th>
+                <th className="px-6 py-4 font-medium">Fecha</th>
+                <th className="px-6 py-4 font-medium">Total</th>
+                <th className="px-6 py-4 font-medium">Estado</th>
+                <th className="px-6 py-4 font-medium text-right">Acciones</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-700/50">
+              {loading ? (
+                <tr><td colSpan={6} className="px-6 py-8 text-center text-slate-400">Cargando...</td></tr>
+              ) : reservations.length === 0 ? (
+                <tr><td colSpan={6} className="px-6 py-8 text-center text-slate-400">No hay reservas registradas.</td></tr>
+              ) : (
+                reservations.map((r) => {
+                  const totalPrice = Number(r.total_price) || 0;
+                  const pagosDeEstaReserva = payments.filter(p => p.reservation_id === r.id && p.status === 'completado');
+                  const totalPaid = pagosDeEstaReserva.reduce((acc, curr) => acc + (Number(curr.amount) || 0), 0);
+                  const pending = Math.round((totalPrice - totalPaid) * 100) / 100;
 
-                return (
-                  <tr key={r.id} className="hover:bg-slate-700/20 transition-colors">
-                    <td className="px-6 py-4 font-medium text-white">{r.clients?.first_name} {r.clients?.last_name}</td>
-                    <td className="px-6 py-4 text-slate-300">{r.boats?.name}</td>
-                    <td className="px-6 py-4 text-slate-300">{r.date} <br/><span className="text-xs text-slate-500">{r.time_slot}</span></td>
-                    <td className="px-6 py-4 text-slate-300 font-bold">
-                      {totalPrice.toFixed(2)} €
-                      <div className="text-[10px] text-slate-500 font-normal mt-1">
-                        Pagado: {totalPaid.toFixed(2)} | Faltan: {pending.toFixed(2)}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${
-                        r.status === 'pagada' ? "bg-green-500/10 text-green-400 border-green-500/20" : 
-                        r.status === 'confirmada' ? "bg-blue-500/10 text-blue-400 border-blue-500/20" : 
-                        "bg-yellow-500/10 text-yellow-400 border-yellow-500/20"
-                      } uppercase`}>
-                        {r.status}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 text-right space-x-2">
-                      <button onClick={() => openDetailsModal(r)} className="text-slate-300 hover:text-white bg-slate-700 hover:bg-slate-600 text-sm font-medium px-3 py-1.5 rounded-md transition-colors">
-                        👁️ Ver
-                      </button>
-                      
-                      {pending > 0.01 && totalPaid === 0 && (
-                        <button onClick={() => handleChargeDeposit(r)} disabled={processingId === r.id} className="text-white bg-blue-600 hover:bg-blue-700 text-sm font-medium px-4 py-1.5 rounded-md disabled:opacity-50">
-                          💳 Depósito
+                  return (
+                    <tr key={r.id} className="hover:bg-slate-700/20 transition-colors">
+                      <td className="px-6 py-4 font-medium text-white">{r.clients?.first_name} {r.clients?.last_name}</td>
+                      <td className="px-6 py-4 text-slate-300">{r.boats?.name}</td>
+                      <td className="px-6 py-4 text-slate-300">{r.date} <br/><span className="text-xs text-slate-500">{r.time_slot}</span></td>
+                      <td className="px-6 py-4 text-slate-300 font-bold">
+                        {totalPrice.toFixed(2)} €
+                        <div className="text-[10px] text-slate-500 font-normal mt-1">
+                          Pagado: {totalPaid.toFixed(2)} | Faltan: {pending.toFixed(2)}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${
+                          r.status === 'pagada' ? "bg-green-500/10 text-green-400 border-green-500/20" : 
+                          r.status === 'confirmada' ? "bg-blue-500/10 text-blue-400 border-blue-500/20" : 
+                          "bg-yellow-500/10 text-yellow-400 border-yellow-500/20"
+                        } uppercase`}>
+                          {r.status}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 text-right space-x-2">
+                        <button onClick={() => openDetailsModal(r)} className="text-slate-300 hover:text-white bg-slate-700 hover:bg-slate-600 text-sm font-medium px-3 py-1.5 rounded-md transition-colors">
+                          👁️ Ver
                         </button>
-                      )}
-                      
-                      {pending > 0.01 && totalPaid > 0 && (
-                        <button onClick={() => handleChargePending(r, pending)} disabled={processingId === r.id} className="text-white bg-green-600 hover:bg-green-700 text-sm font-medium px-4 py-1.5 rounded-md disabled:opacity-50 shadow-lg shadow-green-500/20">
-                          💰 Cobrar {pending.toFixed(2)} €
-                        </button>
-                      )}
-                    </td>
-                  </tr>
-                );
-              })
-            )}
-          </tbody>
-        </table>
+                        
+                        {pending > 0.01 && totalPaid === 0 && (
+                          <button onClick={() => handleChargeDeposit(r)} disabled={processingId === r.id} className="text-white bg-blue-600 hover:bg-blue-700 text-sm font-medium px-4 py-1.5 rounded-md disabled:opacity-50">
+                            💳 Depósito
+                          </button>
+                        )}
+                        
+                        {pending > 0.01 && totalPaid > 0 && (
+                          <button onClick={() => handleChargePending(r, pending)} disabled={processingId === r.id} className="text-white bg-green-600 hover:bg-green-700 text-sm font-medium px-4 py-1.5 rounded-md disabled:opacity-50 shadow-lg shadow-green-500/20">
+                            💰 Cobrar {pending.toFixed(2)} €
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
 
+      {/* MODAL DE DETALLES */}
       {isModalOpen && selectedRes && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
           <div className="bg-slate-800 rounded-xl border border-slate-700 shadow-2xl w-full max-w-3xl overflow-hidden flex flex-col max-h-[90vh]">
-            <div className="flex justify-between items-center p-6 border-b border-slate-700">
+            <div className="flex justify-between items-center p-4 md:p-6 border-b border-slate-700 shrink-0">
               <div>
                 <h2 className="text-xl font-bold text-white">Detalles de la Reserva</h2>
                 <p className="text-sm text-slate-400">{selectedRes.date} · {selectedRes.time_slot}</p>
@@ -357,7 +359,7 @@ export default function ReservationsPage() {
               <button onClick={() => setIsModalOpen(false)} className="text-slate-400 hover:text-white text-2xl leading-none">&times;</button>
             </div>
             
-            <div className="p-6 overflow-y-auto grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="p-4 md:p-6 overflow-y-auto grid grid-cols-1 md:grid-cols-3 gap-6">
               <div className="space-y-4">
                 <div className="bg-slate-900 p-4 rounded-lg border border-slate-700">
                   <p className="text-sm text-slate-400 mb-1">Cliente</p>
@@ -372,6 +374,7 @@ export default function ReservationsPage() {
               </div>
 
               <div className="md:col-span-2 flex flex-col h-full">
+                {/* PESTAÑAS CON SCROLL HORIZONTAL */}
                 <div className="flex gap-2 mb-4 border-b border-slate-700 pb-2 overflow-x-auto">
                   <button onClick={() => setActiveTab("pasajeros")} className={`px-3 py-2 text-sm font-medium whitespace-nowrap rounded-t-lg ${activeTab === "pasajeros" ? "bg-slate-900 text-white border-b-2 border-blue-500" : "text-slate-400 hover:text-white"}`}>👥 Pasajeros</button>
                   <button onClick={() => setActiveTab("tareas")} className={`px-3 py-2 text-sm font-medium whitespace-nowrap rounded-t-lg ${activeTab === "tareas" ? "bg-slate-900 text-white border-b-2 border-blue-500" : "text-slate-400 hover:text-white"}`}>📋 Tareas</button>
@@ -391,7 +394,7 @@ export default function ReservationsPage() {
                       ))}
                     </div>
                     <form onSubmit={handleAddPassenger} className="bg-slate-900 p-4 rounded-lg border border-slate-700 space-y-3 mt-auto">
-                      <div className="grid grid-cols-2 gap-2">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                         <input type="text" required placeholder="Nombre" value={pFirstName} onChange={e => setPFirstName(e.target.value)} className="bg-slate-800 text-white px-3 py-1.5 rounded text-sm border border-slate-600 outline-none" />
                         <input type="text" required placeholder="Apellido" value={pLastName} onChange={e => setPLastName(e.target.value)} className="bg-slate-800 text-white px-3 py-1.5 rounded text-sm border border-slate-600 outline-none" />
                       </div>
@@ -522,7 +525,7 @@ export default function ReservationsPage() {
                       ))}
                     </div>
                     <form onSubmit={handleAddTip} className="bg-slate-900 p-4 rounded-lg border border-slate-700 space-y-3 mt-auto">
-                      <div className="grid grid-cols-2 gap-2">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                         <input type="number" required min="0" step="0.01" placeholder="Importe (€)" value={tipAmount} onChange={e => setTipAmount(e.target.value)} className="bg-slate-800 text-white px-3 py-1.5 rounded text-sm border border-slate-600 outline-none" />
                         <input type="text" placeholder="Nota (opcional)" value={tipNotes} onChange={e => setTipNotes(e.target.value)} className="bg-slate-800 text-white px-3 py-1.5 rounded text-sm border border-slate-600 outline-none" />
                       </div>

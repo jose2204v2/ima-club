@@ -3,6 +3,7 @@
 import { useEffect, useState, useMemo, useRef } from "react";
 import { createClient } from "@/utils/client";
 import { useParams } from "next/navigation";
+import { showToast } from "@/utils/toast"; // <-- IMPORTAMOS LOS TOASTS
 
 type Proposal = {
   id: string;
@@ -53,7 +54,7 @@ export default function ClientPortalPage() {
           .from("conversations")
           .select("id")
           .eq("proposal_id", proposalId)
-          .limit(1); // <-- LA SOLUCIÓN ESTÁ AQUÍ
+          .limit(1);
 
         if (convError) throw new Error("Error al buscar chat: " + convError.message);
 
@@ -84,7 +85,7 @@ export default function ClientPortalPage() {
           setMessages(msgs || []);
         }
       } catch (err) {
-        alert(err instanceof Error ? err.message : "Error al cargar el portal");
+        showToast(err instanceof Error ? err.message : "Error al cargar el portal", "error");
       } finally {
         setLoading(false);
       }
@@ -93,24 +94,16 @@ export default function ClientPortalPage() {
     if (proposalId) loadData();
   }, [proposalId, supabase]);
 
-    // 2. Tiempo real: Escuchar nuevos mensajes
+  // 2. Tiempo real
   useEffect(() => {
     if (!conversationId) return;
-
-    console.log("Iniciando suscripción Realtime para conversación:", conversationId);
 
     const channel = supabase
       .channel(`chat-client-${conversationId}`)
       .on(
         'postgres_changes',
-        { 
-          event: 'INSERT', 
-          schema: 'public', 
-          table: 'messages', 
-          filter: `conversation_id=eq.${conversationId}` 
-        },
+        { event: 'INSERT', schema: 'public', table: 'messages', filter: `conversation_id=eq.${conversationId}` },
         (payload) => {
-          console.log("¡Evento Realtime recibido!", payload);
           const newMsg = payload.new as Message;
           setMessages((prev) => {
             if (!prev.find(m => m.id === newMsg.id)) return [...prev, newMsg];
@@ -118,13 +111,9 @@ export default function ClientPortalPage() {
           });
         }
       )
-      .subscribe((status, err) => {
-        console.log("Estado de la conexión Realtime:", status);
-        if (err) console.error("Error en Realtime:", err);
-      });
+      .subscribe();
 
     return () => {
-      console.log("Cerrando suscripción Realtime...");
       supabase.removeChannel(channel);
     };
   }, [conversationId, supabase]);
@@ -135,10 +124,15 @@ export default function ClientPortalPage() {
   }, [messages]);
 
   // 4. Enviar mensaje
-   const handleSendMessage = async (e: React.FormEvent) => {
+  const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newMessage.trim() || !conversationId) return;
+    if (!newMessage.trim()) return;
     
+    if (!conversationId) {
+      showToast("El chat no se ha inicializado. Recarga la página.", "error");
+      return;
+    }
+
     setSending(true);
     const msgContent = newMessage;
     setNewMessage("");
@@ -150,74 +144,71 @@ export default function ClientPortalPage() {
     }]).select().single();
 
     if (error) {
-      alert("Error al enviar: " + error.message);
+      showToast("Error al enviar: " + error.message, "error");
       setNewMessage(msgContent);
     } else if (data) {
       setMessages((prev) => {
         if (!prev.find(m => m.id === data.id)) return [...prev, data];
         return prev;
       });
-      
-      // NUEVO: Enviar notificación al agente
-      await supabase.from("notifications").insert([{
-        type: "mensaje_cliente",
-        content: `Nuevo mensaje de ${proposal?.boats?.name ? 'un cliente' : 'Cliente'} en el chat de la propuesta.`
-      }]);
     }
     setSending(false);
   };
 
-   const handleAccept = async () => {
+  // 5. Aceptar propuesta
+  const handleAccept = async () => {
     if (!window.confirm("¿Aceptas esta propuesta oficialmente?")) return;
     
     await supabase.from("proposals").update({ status: 'aceptada' }).eq("id", proposalId);
     setProposal(prev => prev ? { ...prev, status: 'aceptada' } : null);
     
-    // NUEVO: Notificar al agente
     await supabase.from("notifications").insert([{
       type: "propuesta_aceptada",
       content: `¡El cliente ha aceptado la propuesta del ${proposal?.boats?.name}!`
     }]);
 
-    alert("¡Propuesta aceptada! El equipo de IMA Club se pondrá en contacto contigo.");
+    showToast("¡Propuesta aceptada! Nos pondremos en contacto contigo.", "success");
   };
+
   if (loading) return <div className="min-h-screen bg-slate-900 text-white flex items-center justify-center">Cargando tu propuesta...</div>;
-  if (!proposal) return <div className="min-h-screen bg-slate-900 text-white flex items-center justify-center">Propuesta no encontrada o expirada.</div>;
+  if (!proposal) return <div className="min-h-screen bg-slate-900 text-white flex items-center justify-center px-4 text-center">Propuesta no encontrada o expirada.</div>;
 
   return (
-    <div className="min-h-screen bg-slate-900 text-white flex flex-col items-center py-10 px-4">
-      <div className="w-full max-w-3xl space-y-6">
+    <div className="min-h-screen bg-slate-900 text-white flex flex-col items-center py-6 md:py-10 px-4">
+      <div className="w-full max-w-3xl space-y-4 md:space-y-6">
         
-        <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold mb-2">⛵ IMA Club</h1>
-          <p className="text-slate-400">Tu propuesta de charter exclusivo</p>
+        {/* Cabecera */}
+        <div className="text-center mb-4 md:mb-8">
+          <h1 className="text-3xl md:text-4xl font-bold mb-2">⛵ IMA Club</h1>
+          <p className="text-sm md:text-base text-slate-400">Tu propuesta de charter exclusivo</p>
         </div>
 
-        <div className="bg-slate-800 p-8 rounded-2xl border border-slate-700 shadow-2xl">
-          <div className="flex justify-between items-start mb-6">
+        {/* Tarjeta Propuesta */}
+        <div className="bg-slate-800 p-5 md:p-8 rounded-2xl border border-slate-700 shadow-2xl">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
             <div>
-              <p className="text-sm text-slate-400 mb-1">Embarcación</p>
-              <h2 className="text-3xl font-bold text-white">{proposal.boats?.name}</h2>
+              <p className="text-xs md:text-sm text-slate-400 mb-1">Embarcación</p>
+              <h2 className="text-2xl md:text-3xl font-bold text-white">{proposal.boats?.name}</h2>
             </div>
-            <div className="text-right">
-              <p className="text-sm text-slate-400 mb-1">Precio Total</p>
-              <p className="text-3xl font-bold text-green-400">{Number(proposal.total_price).toLocaleString('es-ES')} €</p>
+            <div className="text-left sm:text-right w-full sm:w-auto bg-slate-900 sm:bg-transparent p-3 sm:p-0 rounded-lg">
+              <p className="text-xs md:text-sm text-slate-400 mb-1">Precio Total</p>
+              <p className="text-2xl md:text-3xl font-bold text-green-400">{Number(proposal.total_price).toLocaleString('es-ES')} €</p>
             </div>
           </div>
 
           <div className="grid grid-cols-2 gap-4 bg-slate-900 p-4 rounded-xl mb-6">
             <div>
-              <p className="text-xs text-slate-500 uppercase font-bold mb-1">Fecha</p>
-              <p className="font-medium">{proposal.date}</p>
+              <p className="text-[10px] md:text-xs text-slate-500 uppercase font-bold mb-1">Fecha</p>
+              <p className="font-medium text-sm md:text-base">{proposal.date}</p>
             </div>
             <div>
-              <p className="text-xs text-slate-500 uppercase font-bold mb-1">Horario</p>
-              <p className="font-medium">{proposal.time_slot}</p>
+              <p className="text-[10px] md:text-xs text-slate-500 uppercase font-bold mb-1">Horario</p>
+              <p className="font-medium text-sm md:text-base">{proposal.time_slot}</p>
             </div>
           </div>
 
           {proposal.status === 'borrador' ? (
-            <button onClick={handleAccept} className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 rounded-xl transition-colors text-lg shadow-lg shadow-blue-500/20">
+            <button onClick={handleAccept} className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 md:py-4 rounded-xl transition-colors text-base md:text-lg shadow-lg shadow-blue-500/20">
               ✅ Aceptar Propuesta
             </button>
           ) : (
@@ -228,17 +219,18 @@ export default function ClientPortalPage() {
           )}
         </div>
 
-        <div className="bg-slate-800 rounded-2xl border border-slate-700 overflow-hidden flex flex-col h-[400px]">
-          <div className="p-4 border-b border-slate-700 bg-slate-900">
-            <h3 className="font-bold">💬 Habla con tu agente</h3>
-            <p className="text-xs text-slate-400">Resuelve cualquier duda sobre tu reserva.</p>
+        {/* Chat con el Agente */}
+        <div className="bg-slate-800 rounded-2xl border border-slate-700 overflow-hidden flex flex-col h-[60vh] md:h-[400px]">
+          <div className="p-4 border-b border-slate-700 bg-slate-900 shrink-0">
+            <h3 className="font-bold text-sm md:text-base">💬 Habla con tu agente</h3>
+            <p className="text-[10px] md:text-xs text-slate-400">Resuelve cualquier duda sobre tu reserva.</p>
           </div>
           
           <div className="flex-1 overflow-y-auto p-4 space-y-4">
             {messages.length === 0 && <p className="text-center text-slate-500 text-sm mt-4">Envía un mensaje para comenzar.</p>}
             {messages.map((msg) => (
               <div key={msg.id} className={`flex ${msg.sender_type === 'client' ? 'justify-end' : 'justify-start'}`}>
-                <div className={`max-w-[80%] p-3 rounded-lg text-sm ${
+                <div className={`max-w-[85%] p-3 rounded-lg text-sm ${
                   msg.sender_type === 'client' ? 'bg-blue-600 text-white rounded-br-none' : 'bg-slate-700 text-slate-200 rounded-bl-none'
                 }`}>
                   <p>{msg.content}</p>
@@ -251,15 +243,15 @@ export default function ClientPortalPage() {
             <div ref={messagesEndRef} />
           </div>
 
-          <form onSubmit={handleSendMessage} className="p-3 border-t border-slate-700 bg-slate-900 flex gap-2">
+          <form onSubmit={handleSendMessage} className="p-3 border-t border-slate-700 bg-slate-900 flex gap-2 shrink-0">
             <input 
               type="text" 
               value={newMessage}
               onChange={(e) => setNewMessage(e.target.value)}
               placeholder="Escribe tu mensaje..." 
-              className="flex-1 bg-slate-800 text-white px-4 py-2 rounded-lg border border-slate-700 focus:outline-none focus:border-blue-500"
+              className="flex-1 bg-slate-800 text-white px-4 py-2 rounded-lg border border-slate-700 focus:outline-none focus:border-blue-500 text-sm"
             />
-            <button type="submit" disabled={sending} className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors disabled:opacity-50">
+            <button type="submit" disabled={sending} className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors disabled:opacity-50 text-sm">
               {sending ? "..." : "Enviar"}
             </button>
           </form>

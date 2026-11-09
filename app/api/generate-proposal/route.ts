@@ -43,15 +43,17 @@ export async function POST(req: Request) {
 
     // 3. Buscar la tarifa correspondiente
     const { data: rates } = await supabase
-      .from('rates')
-      .select('*, seasons(name, start_month, end_month)')
+      .from('rates').select('*, seasons(name, start_date, end_date)')
       .eq('boat_id', selectedBoat.id)
       .eq('duration_hours', duration);
 
-    const applicableRate = rates?.find(r => 
-      r.seasons && month >= r.seasons.start_month && month <= r.seasons.end_month
-    );
-
+    const applicableRate = rates?.find(r => {
+  if (!r.seasons?.start_date || !r.seasons?.end_date) return false;
+  const targetDate = new Date(proposalDate).getTime();
+  const start = new Date(r.seasons.start_date).getTime();
+  const end = new Date(r.seasons.end_date).getTime();
+  return targetDate >= start && targetDate <= end;
+});
     let finalPrice = selectedBoat.base_price; // Fallback
     if (applicableRate) {
       finalPrice = applicableRate.price - (applicableRate.price * (applicableRate.discount_pct / 100));

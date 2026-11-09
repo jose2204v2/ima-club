@@ -98,7 +98,7 @@ export default function ProposalsPage() {
       supabase.from("proposals").select(`*, clients (first_name, last_name), boats (name)`).order("created_at", { ascending: false }),
       supabase.from("clients").select("id, first_name, last_name"),
       supabase.from("boats").select("id, name"),
-      supabase.from("rates").select(`*, seasons (name, start_month, end_month)`)
+      supabase.from("rates").select(`*, seasons (name, start_date, end_date)`)
     ]);
 
     if (propRes.error) setError(propRes.error.message);

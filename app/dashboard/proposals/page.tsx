@@ -5,7 +5,7 @@ import { createClient } from "@/utils/client";
 import ChatModal from "./components/ChatModal";
 import ConfirmDialog from "../components/ConfirmDialog";
 import { toast } from "sonner"; 
-import { Plus, MessageSquare, Link2, CheckCircle2, Trash2, X, Info, Lock } from "lucide-react"; // <-- Añadido Lock
+import { Plus, MessageSquare, Link2, CheckCircle2, Trash2, X, Info, Lock } from "lucide-react"; 
 import { motion, AnimatePresence } from "framer-motion";
 import { findApplicableRate, calculateFinalPrice, Rate } from "@/utils/pricing";
 
@@ -40,6 +40,17 @@ const isOverlapping = (slot1: string, slot2: string) => {
   const t2 = getTimes(slot2);
   if (!t1 || !t2) return false;
   return t1.start < t2.end && t2.start < t1.end;
+};
+
+// VARIANTES PARA LA ANIMACIÓN EN CASCADA
+const container = {
+  hidden: { opacity: 0 },
+  show: { opacity: 1, transition: { staggerChildren: 0.05 } }
+};
+
+const item = {
+  hidden: { opacity: 0, x: -20 },
+  show: { opacity: 1, x: 0 }
 };
 
 export default function ProposalsPage() {
@@ -129,7 +140,6 @@ export default function ProposalsPage() {
     };
   }, [fetchData, fetchUnreadCounts, supabase]);
 
-  // VALIDACIÓN DE DISPONIBILIDAD (Solucionado el error de timeSlot)
   useEffect(() => {
     let isMounted = true;
     if (!isModalOpen || !selectedBoat || !date) {
@@ -147,14 +157,12 @@ export default function ProposalsPage() {
       const blocked = TIME_SLOTS.filter(stdSlot => occupiedData.some(dbSlot => isOverlapping(stdSlot, dbSlot)));
       setBlockedSlots(blocked);
       setCheckingAvailability(false);
-      // USAMOS FUNCIÓN FUNCIONAL PARA NO AÑADIR 'timeSlot' A LAS DEPENDENCIAS
       setTimeSlot((prev) => blocked.includes(prev) ? "" : prev);
     };
     checkAvailability();
     return () => { isMounted = false; };
   }, [isModalOpen, selectedBoat, date, supabase]);
 
-  // LÓGICA MÁGICA: CALCULAR PRECIO (Solucionado el error de React 19)
   useEffect(() => {
     const calculatePrice = () => {
       if (!isModalOpen || !selectedBoat || !date || !timeSlot) {
@@ -162,17 +170,7 @@ export default function ProposalsPage() {
         setAppliedRateInfo(null);
         return;
       }
-
-         console.log("🔍 RADAR - Buscando tarifa:", { 
-        barcoSeleccionado: selectedBoat, 
-        fechaSeleccionada: date, 
-        horario: timeSlot, 
-        totalTarifasEnBD: rates.length,
-        tarifasDisponibles: rates 
-      });
-
       const rate = findApplicableRate(rates, selectedBoat, date, timeSlot);
-      
       if (rate) {
         const finalPrice = calculateFinalPrice(rate.price, rate.discount_pct);
         setPrice(finalPrice.toString());
@@ -293,7 +291,13 @@ export default function ProposalsPage() {
                 <th className="px-6 py-4 font-medium text-right">Acciones</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-white/5">
+            {/* APLICAMOS LA ANIMACIÓN AL TBODY */}
+            <motion.tbody 
+              variants={container} 
+              initial="hidden" 
+              animate="show" 
+              className="divide-y divide-white/5"
+            >
               {loading ? (
                 <tr><td colSpan={6} className="px-6 py-8 text-center text-slate-400">Cargando...</td></tr>
               ) : proposals.length === 0 ? (
@@ -305,7 +309,7 @@ export default function ProposalsPage() {
                     return (
                       <motion.tr 
                         key={p.id} 
-                        initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                        variants={item}
                         className={`transition-colors group ${unread > 0 ? 'bg-orange-500/5 hover:bg-orange-500/10' : 'hover:bg-white/5'}`}
                       >
                         <td className="px-6 py-4 font-medium text-white">
@@ -351,7 +355,7 @@ export default function ProposalsPage() {
                   })}
                 </AnimatePresence>
               )}
-            </tbody>
+            </motion.tbody>
           </table>
         </div>
       </div>
@@ -359,7 +363,7 @@ export default function ProposalsPage() {
       {/* MODAL NUEVA PROPUESTA */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="bg-[#0f172a] rounded-xl border border-white/10 shadow-2xl w-full max-w-lg overflow-hidden max-h-[90vh] flex flex-col">
+          <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="bg-[#0f172a]/95 backdrop-blur-2xl rounded-2xl border border-white/10 shadow-2xl w-full max-w-lg overflow-hidden flex flex-col max-h-[90vh]">
             <div className="flex justify-between items-center p-6 border-b border-white/10 shrink-0">
               <h2 className="text-xl font-bold text-white">Nueva Propuesta</h2>
               <button onClick={() => setIsModalOpen(false)} className="text-slate-400 hover:text-white transition-colors"><X size={20} /></button>
@@ -442,7 +446,13 @@ export default function ProposalsPage() {
       )}
 
       {chatProposal && (
-        <ChatModal isOpen={isChatOpen} onClose={() => { setIsChatOpen(false); fetchUnreadCounts(); }} proposalId={chatProposal.id} clientName={chatProposal.name} onRead={fetchUnreadCounts} />
+        <ChatModal 
+          isOpen={isChatOpen} 
+          onClose={() => { setIsChatOpen(false); fetchUnreadCounts(); }} 
+          proposalId={chatProposal.id} 
+          clientName={chatProposal.name} 
+          onRead={fetchUnreadCounts}
+        />
       )}
 
       <ConfirmDialog 

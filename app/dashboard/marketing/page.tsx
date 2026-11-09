@@ -28,6 +28,17 @@ const COLUMNS = [
   { id: 'publicado', title: 'Publicado', icon: CheckCircle2, color: 'text-emerald-400', border: 'border-emerald-500/30' },
 ];
 
+// VARIANTES PARA LA ANIMACIÓN EN CASCADA (Ahora para las columnas)
+const container = {
+  hidden: { opacity: 0 },
+  show: { opacity: 1, transition: { staggerChildren: 0.1 } }
+};
+
+const item = {
+  hidden: { opacity: 0, y: 20 },
+  show: { opacity: 1, y: 0 }
+};
+
 export default function MarketingPage() {
   const [posts, setPosts] = useState<Post[]>([]);
   const [boats, setBoats] = useState<Boat[]>([]);
@@ -124,14 +135,23 @@ export default function MarketingPage() {
 
       {error && <div className="bg-red-500/10 border border-red-500 text-red-500 p-4 rounded-lg shrink-0">Error: {error}</div>}
 
-      {/* Tablero Kanban */}
-      <div className="flex-1 overflow-x-auto overflow-y-hidden -mx-4 px-4 md:mx-0 md:px-0 custom-scrollbar">
+      {/* Tablero Kanban CON ANIMACIÓN EN CASCADA */}
+      <motion.div 
+        variants={container}
+        initial="hidden"
+        animate="show"
+        className="flex-1 overflow-x-auto overflow-y-hidden -mx-4 px-4 md:mx-0 md:px-0 custom-scrollbar"
+      >
         <div className="flex gap-4 md:gap-6 h-full min-w-max pb-4">
           {COLUMNS.map(col => {
             const colPosts = posts.filter(p => p.status === col.id);
             const Icon = col.icon;
             return (
-              <div key={col.id} className="w-[280px] md:w-80 bg-white/5 backdrop-blur-xl rounded-2xl border border-white/10 flex flex-col overflow-hidden">
+              <motion.div 
+                key={col.id} 
+                variants={item}
+                className="w-[280px] md:w-80 bg-white/5 backdrop-blur-xl rounded-2xl border border-white/10 flex flex-col overflow-hidden"
+              >
                 <div className={`p-4 border-b border-white/10 flex justify-between items-center shrink-0 bg-white/5`}>
                   <h3 className={`font-bold text-sm md:text-base flex items-center gap-2 ${col.color}`}>
                     <Icon size={16} /> {col.title}
@@ -185,11 +205,11 @@ export default function MarketingPage() {
                     </div>
                   )}
                 </div>
-              </div>
+              </motion.div>
             );
           })}
         </div>
-      </div>
+      </motion.div>
 
       {/* MODAL NUEVA IDEA */}
       {isModalOpen && (

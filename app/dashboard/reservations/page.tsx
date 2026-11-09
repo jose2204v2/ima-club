@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useMemo, useCallback, ElementType } from "react";
+import { useEffect, useState, useMemo, useCallback } from "react";
 import { createClient } from "@/utils/client";
 import Image from "next/image";
 import { toast } from "sonner"; 
@@ -8,7 +8,8 @@ import { motion, AnimatePresence } from "framer-motion";
 import { 
   Eye, CreditCard, Banknote, Users, ClipboardList, Gift, 
   FileText, AlertTriangle, Coins, Plus, Check, Trash2, 
-  X, QrCode, Printer, PenTool, CheckCircle2, Anchor
+  X, QrCode, Printer, PenTool, CheckCircle2, Anchor,
+  LucideIcon // <-- IMPORTAMOS EL TIPO OFICIAL
 } from "lucide-react";
 
 type Reservation = { 
@@ -29,8 +30,17 @@ type Contract = { id: string; status: string; signed_at: string | null; signed_b
 type Incident = { id: string; description: string; status: string; };
 type Tip = { id: string; amount: number; notes: string; };
 
-// DEFINIMOS LOS TIPOS EXACTOS DE LAS PESTAÑAS
 type TabId = "pasajeros" | "tareas" | "extras" | "contrato" | "incidencias" | "propinas";
+
+const container = {
+  hidden: { opacity: 0 },
+  show: { opacity: 1, transition: { staggerChildren: 0.05 } }
+};
+
+const item = {
+  hidden: { opacity: 0, x: -20 },
+  show: { opacity: 1, x: 0 }
+};
 
 export default function ReservationsPage() {
   const [reservations, setReservations] = useState<Reservation[]>([]);
@@ -72,7 +82,6 @@ export default function ReservationsPage() {
 
   const supabase = useMemo(() => createClient(), []);
 
-  // ENVOLVEMOS FETCHDATA EN USECALLBACK
   const fetchData = useCallback(async () => {
     try {
       const [resRes, payRes] = await Promise.all([
@@ -97,7 +106,7 @@ export default function ReservationsPage() {
     };
     const timer = setTimeout(loadInitialData, 0);
     return () => { active = false; clearTimeout(timer); };
-  }, [fetchData]); // AHORA TIENE SU DEPENDENCIA
+  }, [fetchData]);
 
   const handleChargeDeposit = async (res: Reservation) => {
     const total = Number(res.total_price) || 0;
@@ -236,7 +245,6 @@ export default function ReservationsPage() {
       toast.success("¡Contrato firmado con éxito!");
       await openDetailsModal(selectedRes);
     } catch (err) { 
-      // SOLUCIÓN AL ERROR 2: Usamos la variable err
       toast.error("Error al firmar contrato: " + (err instanceof Error ? err.message : "Desconocido"));
     } finally { setSigningContract(false); }
   };
@@ -261,8 +269,8 @@ export default function ReservationsPage() {
     setSavingTip(false);
   };
 
-  // DEFINIMOS LAS PESTAÑAS CON SU TIPO CORRECTO
-  const tabs: { id: TabId, label: string, icon: ElementType }[] = [
+  // CORREGIDO: Usamos LucideIcon en lugar de any
+  const tabs: { id: TabId, label: string, icon: LucideIcon }[] = [
     { id: "pasajeros", label: "Pasajeros", icon: Users },
     { id: "tareas", label: "Tareas", icon: ClipboardList },
     { id: "extras", label: "Extras", icon: Gift },
@@ -295,7 +303,12 @@ export default function ReservationsPage() {
                 <th className="px-6 py-4 font-medium text-right">Acciones</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-white/5">
+            <motion.tbody 
+              variants={container} 
+              initial="hidden" 
+              animate="show" 
+              className="divide-y divide-white/5"
+            >
               {loading ? (
                 <tr><td colSpan={6} className="px-6 py-8 text-center text-slate-400">Cargando...</td></tr>
               ) : reservations.length === 0 ? (
@@ -311,7 +324,7 @@ export default function ReservationsPage() {
                     return (
                       <motion.tr 
                         key={r.id} 
-                        initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                        variants={item}
                         className="hover:bg-white/5 transition-colors group"
                       >
                         <td className="px-6 py-4 font-medium text-white">{r.clients?.first_name} {r.clients?.last_name}</td>
@@ -334,7 +347,7 @@ export default function ReservationsPage() {
                             {r.status}
                           </span>
                         </td>
-                        <td className="px-6 py-4 text-right space-x-2">
+                        <td className="px-6 py-4 text-right space-x-2 opacity-80 group-hover:opacity-100 transition-opacity">
                           <button onClick={() => openDetailsModal(r)} className="text-slate-300 hover:text-white bg-white/5 hover:bg-white/10 p-2 rounded-md transition-colors" title="Ver detalles">
                             <Eye size={16} />
                           </button>
@@ -356,12 +369,11 @@ export default function ReservationsPage() {
                   })}
                 </AnimatePresence>
               )}
-            </tbody>
+            </motion.tbody>
           </table>
         </div>
       </div>
 
-      {/* MODAL DE DETALLES */}
       {isModalOpen && selectedRes && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="bg-[#0f172a]/95 backdrop-blur-2xl rounded-2xl border border-white/10 shadow-2xl w-full max-w-4xl overflow-hidden flex flex-col max-h-[90vh]">
@@ -375,7 +387,6 @@ export default function ReservationsPage() {
             
             <div className="p-5 md:p-6 overflow-y-auto grid grid-cols-1 md:grid-cols-3 gap-6 custom-scrollbar">
               
-              {/* COLUMNA IZQUIERDA: INFO Y QR */}
               <div className="space-y-4">
                 <div className="bg-white/5 p-4 rounded-xl border border-white/10">
                   <p className="text-xs text-slate-400 mb-1">Cliente</p>
@@ -389,10 +400,8 @@ export default function ReservationsPage() {
                 </div>
               </div>
 
-              {/* COLUMNA DERECHA: PESTAÑAS Y CONTENIDO */}
               <div className="md:col-span-2 flex flex-col h-full">
                 
-                {/* PESTAÑAS CRISTAL */}
                 <div className="flex gap-2 mb-4 border-b border-white/10 pb-2 overflow-x-auto custom-scrollbar">
                   {tabs.map(tab => {
                     const Icon = tab.icon;
@@ -400,7 +409,7 @@ export default function ReservationsPage() {
                     return (
                       <button 
                         key={tab.id}
-                        onClick={() => setActiveTab(tab.id)} // SOLUCIÓN AL ERROR 1: Sin "as any"
+                        onClick={() => setActiveTab(tab.id)}
                         className={`px-3 py-2 text-sm font-medium whitespace-nowrap rounded-t-lg transition-colors flex items-center gap-2 ${
                           isActive ? "text-blue-400 border-b-2 border-blue-400 bg-white/5" : "text-slate-400 hover:text-white hover:bg-white/5"
                         }`}
@@ -411,10 +420,8 @@ export default function ReservationsPage() {
                   })}
                 </div>
 
-                {/* CONTENIDO DE PESTAÑAS */}
                 <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar">
                   
-                  {/* PASAJEROS */}
                   {activeTab === "pasajeros" && (
                     <div className="flex flex-col h-full">
                       <div className="flex-1 space-y-2 mb-4">
@@ -437,7 +444,6 @@ export default function ReservationsPage() {
                     </div>
                   )}
 
-                  {/* TAREAS */}
                   {activeTab === "tareas" && (
                     <div className="flex flex-col h-full">
                       <div className="flex-1 space-y-2 mb-4">
@@ -459,7 +465,6 @@ export default function ReservationsPage() {
                     </div>
                   )}
 
-                  {/* EXTRAS */}
                   {activeTab === "extras" && (
                     <div className="flex flex-col h-full">
                       <div className="flex-1 space-y-2 mb-4">
@@ -485,7 +490,6 @@ export default function ReservationsPage() {
                     </div>
                   )}
 
-                  {/* CONTRATO */}
                   {activeTab === "contrato" && (
                     <div className="flex flex-col h-full">
                       {contract?.status === 'firmado' ? (
@@ -528,7 +532,6 @@ export default function ReservationsPage() {
                     </div>
                   )}
 
-                  {/* INCIDENCIAS */}
                   {activeTab === "incidencias" && (
                     <div className="flex flex-col h-full">
                       <div className="flex-1 space-y-2 mb-4">
@@ -555,7 +558,6 @@ export default function ReservationsPage() {
                     </div>
                   )}
 
-                  {/* PROPINAS */}
                   {activeTab === "propinas" && (
                     <div className="flex flex-col h-full">
                       <div className="flex-1 space-y-2 mb-4">

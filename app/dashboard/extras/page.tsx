@@ -14,6 +14,17 @@ type Extra = {
   is_active: boolean;
 };
 
+// VARIANTES PARA LA ANIMACIÓN EN CASCADA
+const container = {
+  hidden: { opacity: 0 },
+  show: { opacity: 1, transition: { staggerChildren: 0.05 } }
+};
+
+const item = {
+  hidden: { opacity: 0, x: -20 },
+  show: { opacity: 1, x: 0 }
+};
+
 export default function ExtrasPage() {
   const [extras, setExtras] = useState<Extra[]>([]);
   const [loading, setLoading] = useState(true);
@@ -88,7 +99,13 @@ export default function ExtrasPage() {
                 <th className="px-6 py-4 font-medium">Estado</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-white/5">
+            {/* APLICAMOS LA ANIMACIÓN AL TBODY */}
+            <motion.tbody 
+              variants={container} 
+              initial="hidden" 
+              animate="show" 
+              className="divide-y divide-white/5"
+            >
               {loading ? (
                 <tr><td colSpan={4} className="px-6 py-8 text-center text-slate-400">Cargando...</td></tr>
               ) : extras.length === 0 ? (
@@ -98,7 +115,7 @@ export default function ExtrasPage() {
                   {extras.map((e) => (
                     <motion.tr 
                       key={e.id}
-                      initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                      variants={item}
                       className="hover:bg-white/5 transition-colors group"
                     >
                       <td className="px-6 py-4 font-medium text-white flex items-center gap-2">
@@ -122,7 +139,7 @@ export default function ExtrasPage() {
                   ))}
                 </AnimatePresence>
               )}
-            </tbody>
+            </motion.tbody>
           </table>
         </div>
       </div>
@@ -135,7 +152,7 @@ export default function ExtrasPage() {
               <h2 className="text-xl font-bold text-white">Nuevo Extra</h2>
               <button onClick={() => setIsModalOpen(false)} className="text-slate-400 hover:text-white transition-colors"><X size={20} /></button>
             </div>
-            <form onSubmit={handleAddExtra} className="p-6 space-y-4 overflow-y-auto">
+            <form onSubmit={handleAddExtra} className="p-6 space-y-4 overflow-y-auto custom-scrollbar">
               <div>
                 <label className="block text-sm font-medium text-slate-300 mb-1">Nombre</label>
                 <input type="text" required value={name} onChange={(e) => setName(e.target.value)} className="w-full bg-white/5 text-white px-4 py-2.5 rounded-lg border border-white/10 focus:outline-none focus:border-blue-500 transition-colors" placeholder="Ej: DJ Profesional" />
@@ -160,4 +177,4 @@ export default function ExtrasPage() {
       )}
     </div>
   );
-} 
+}

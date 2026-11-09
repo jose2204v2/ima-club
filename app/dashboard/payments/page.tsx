@@ -19,6 +19,17 @@ type Payment = {
   } | null;
 };
 
+// VARIANTES PARA LA ANIMACIÓN EN CASCADA
+const container = {
+  hidden: { opacity: 0 },
+  show: { opacity: 1, transition: { staggerChildren: 0.05 } }
+};
+
+const item = {
+  hidden: { opacity: 0, x: -20 },
+  show: { opacity: 1, x: 0 }
+};
+
 export default function PaymentsPage() {
   const [payments, setPayments] = useState<Payment[]>([]);
   const [loading, setLoading] = useState(true);
@@ -54,7 +65,6 @@ export default function PaymentsPage() {
     return () => { active = false; clearTimeout(timer); };
   }, [fetchPayments]);
 
-  // Cálculos para las tarjetas de resumen
   const totalCollected = payments.filter(p => p.status === 'completado').reduce((acc, curr) => acc + Number(curr.amount), 0);
   const totalTransactions = payments.filter(p => p.status === 'completado').length;
 
@@ -114,7 +124,13 @@ export default function PaymentsPage() {
                 <th className="px-6 py-4 font-medium">Estado</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-white/5">
+            {/* APLICAMOS LA ANIMACIÓN AL TBODY */}
+            <motion.tbody 
+              variants={container} 
+              initial="hidden" 
+              animate="show" 
+              className="divide-y divide-white/5"
+            >
               {loading ? (
                 <tr><td colSpan={6} className="px-6 py-8 text-center text-slate-400">Cargando pagos...</td></tr>
               ) : payments.length === 0 ? (
@@ -124,7 +140,7 @@ export default function PaymentsPage() {
                   {payments.map((p) => (
                     <motion.tr 
                       key={p.id} 
-                      initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                      variants={item}
                       className="hover:bg-white/5 transition-colors"
                     >
                       <td className="px-6 py-4 text-slate-300 flex items-center gap-2 text-sm">
@@ -152,7 +168,7 @@ export default function PaymentsPage() {
                   ))}
                 </AnimatePresence>
               )}
-            </tbody>
+            </motion.tbody>
           </table>
         </div>
       </div>

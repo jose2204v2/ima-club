@@ -14,6 +14,17 @@ type ReservationData = {
   boats: { name: string }[] | null; 
 };
 
+// VARIANTES PARA LA ANIMACIÓN EN CASCADA
+const container = {
+  hidden: { opacity: 0 },
+  show: { opacity: 1, transition: { staggerChildren: 0.1 } }
+};
+
+const item = {
+  hidden: { opacity: 0, y: 20 },
+  show: { opacity: 1, y: 0 }
+};
+
 export default function ReportsPage() {
   const [loading, setLoading] = useState(true);
   const [totalRevenue, setTotalRevenue] = useState(0);
@@ -70,8 +81,14 @@ export default function ReportsPage() {
         <p className="text-slate-400 mt-1">Rentabilidad global de IMA Club.</p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="bg-white/5 backdrop-blur-xl p-5 md:p-6 rounded-2xl border border-white/10 shadow-lg">
+      {/* TARJETAS KPI ANIMADAS */}
+      <motion.div 
+        variants={container}
+        initial="hidden"
+        animate="show"
+        className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6"
+      >
+        <motion.div variants={item} className="bg-white/5 backdrop-blur-xl p-5 md:p-6 rounded-2xl border border-white/10 shadow-lg">
           <div className="flex items-center gap-2 mb-3">
             <div className="p-2 bg-emerald-500/20 rounded-lg text-emerald-400"><TrendingUp size={18} /></div>
             <p className="text-slate-300 text-xs md:text-sm font-medium">Ingresos Brutos</p>
@@ -80,7 +97,8 @@ export default function ReportsPage() {
             {totalRevenue.toLocaleString('es-ES', { style: 'currency', currency: 'EUR' })}
           </p>
         </motion.div>
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="bg-white/5 backdrop-blur-xl p-5 md:p-6 rounded-2xl border border-white/10 shadow-lg">
+        
+        <motion.div variants={item} className="bg-white/5 backdrop-blur-xl p-5 md:p-6 rounded-2xl border border-white/10 shadow-lg">
           <div className="flex items-center gap-2 mb-3">
             <div className="p-2 bg-red-500/20 rounded-lg text-red-400"><TrendingDown size={18} /></div>
             <p className="text-slate-300 text-xs md:text-sm font-medium">Costes Estimados (60%)</p>
@@ -89,7 +107,8 @@ export default function ReportsPage() {
             {totalCost.toLocaleString('es-ES', { style: 'currency', currency: 'EUR' })}
           </p>
         </motion.div>
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="bg-white/5 backdrop-blur-xl p-5 md:p-6 rounded-2xl border border-white/10 shadow-lg">
+        
+        <motion.div variants={item} className="bg-white/5 backdrop-blur-xl p-5 md:p-6 rounded-2xl border border-white/10 shadow-lg">
           <div className="flex items-center gap-2 mb-3">
             <div className="p-2 bg-blue-500/20 rounded-lg text-blue-400"><PiggyBank size={18} /></div>
             <p className="text-slate-300 text-xs md:text-sm font-medium">Margen Neto</p>
@@ -99,11 +118,13 @@ export default function ReportsPage() {
           </p>
           <p className="text-xs md:text-sm text-blue-400 mt-2">Rentabilidad del {marginPercent.toFixed(1)}%</p>
         </motion.div>
-      </div>
+      </motion.div>
 
-      {/* Gráfico de Barras Animado */}
+      {/* GRÁFICO DE BARRAS ANIMADO */}
       <motion.div 
-        initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}
+        initial={{ opacity: 0, y: 20 }} 
+        animate={{ opacity: 1, y: 0 }} 
+        transition={{ delay: 0.3 }}
         className="bg-white/5 backdrop-blur-xl p-5 md:p-6 rounded-2xl border border-white/10 w-full max-w-4xl shadow-2xl mt-6"
       >
         <h3 className="text-lg md:text-xl font-bold text-white mb-6 flex items-center gap-2">

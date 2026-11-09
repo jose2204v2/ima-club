@@ -7,14 +7,14 @@ export type Rate = {
   duration_hours: number;
   price: number;
   discount_pct: number;
-  seasons?: { name: string, start_month: number, end_month: number } | null;
+  seasons?: { name: string, start_date: string | null, end_date: string | null } | null;
 };
 
 // 1. Traducir texto a horas (duración)
 export const getDurationFromTimeSlot = (timeSlot: string): number => {
   if (timeSlot.includes("Full Day") || timeSlot.includes("7h")) return 7;
   if (timeSlot.includes("3.5h") || timeSlot.includes("Morning") || timeSlot.includes("Afternoon") || timeSlot.includes("Sunset")) return 3.5;
-  return 3.5; // Por defecto
+  return 3.5;
 };
 
 // 2. Calcular el precio final con descuento
@@ -22,7 +22,7 @@ export const calculateFinalPrice = (basePrice: number, discountPct: number) => {
   return basePrice - (basePrice * (discountPct / 100));
 };
 
-// 3. Encontrar la tarifa exacta (Lógica para el Frontend)
+// 3. Encontrar la tarifa exacta basándose en FECHAS reales
 export const findApplicableRate = (
   rates: Rate[], 
   boatId: string, 
@@ -32,13 +32,15 @@ export const findApplicableRate = (
   if (!dateStr || !timeSlot || !boatId) return null;
 
   const duration = getDurationFromTimeSlot(timeSlot);
-  const month = new Date(dateStr).getMonth() + 1; // 1-12
+  const targetDate = new Date(dateStr).getTime();
 
-  // Buscamos la tarifa que coincide con barco y duración, y cuya temporada incluya el mes
-  return rates.find(r => 
-    r.boat_id === boatId && 
-    r.duration_hours === duration &&
-    r.seasons && 
-    month >= r.seasons.start_month && month <= r.seasons.end_month
-  );
+  return rates.find(r => {
+    if (r.boat_id !== boatId || r.duration_hours !== duration) return false;
+    if (!r.seasons?.start_date || !r.seasons?.end_date) return false;
+
+    const start = new Date(r.seasons.start_date).getTime();
+    const end = new Date(r.seasons.end_date).getTime();
+
+    return targetDate >= start && targetDate <= end;
+  });
 };

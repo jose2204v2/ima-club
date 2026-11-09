@@ -39,7 +39,7 @@ export async function POST(req: Request) {
     const proposalDate = lead.fecha || new Date(Date.now() + 86400000).toISOString().split('T')[0];
     const timeSlot = lead.duracion || '10:00-13:30 (Morning)';
     const duration = getDurationFromTimeSlot(timeSlot);
-    const month = new Date(proposalDate).getMonth() + 1;
+   
 
     // 3. Buscar la tarifa correspondiente
     const { data: rates } = await supabase

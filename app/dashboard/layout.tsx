@@ -10,7 +10,7 @@ import TutorialModal from "./TutorialModal";
 import {
   LayoutDashboard, Target, Ship, Calendar, Users, FileText,
   CheckSquare, CreditCard, Gift, Camera, BarChart, Settings,
-  Bell, LogOut, Menu, X, Anchor
+  Bell, LogOut, Menu, X, Anchor, Tags // <-- Añade "Tags" aquí
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -83,6 +83,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     { name: "Inicio", path: "/dashboard", icon: LayoutDashboard },
     { name: "Leads (CRM)", path: "/dashboard/leads", icon: Target },
     { name: "Barcos", path: "/dashboard/boats", icon: Ship },
+    { name: "Tarifas", path: "/dashboard/rates", icon: Tags },
     { name: "Calendario", path: "/dashboard/calendar", icon: Calendar },
     { name: "Clientes", path: "/dashboard/clients", icon: Users },
     { name: "Propuestas", path: "/dashboard/proposals", icon: FileText },

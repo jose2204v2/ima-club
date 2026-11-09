@@ -13,8 +13,7 @@ export type Rate = {
 // 1. Traducir texto a horas (duración)
 export const getDurationFromTimeSlot = (timeSlot: string): number => {
   if (timeSlot.includes("Full Day") || timeSlot.includes("7h")) return 7;
-  if (timeSlot.includes("3.5h") || timeSlot.includes("Morning") || timeSlot.includes("Afternoon") || timeSlot.includes("Sunset")) return 3.5;
-  return 3.5;
+  return 3.5; // Por defecto 3.5h para Morning, Afternoon, Sunset
 };
 
 // 2. Calcular el precio final con descuento
@@ -22,7 +21,7 @@ export const calculateFinalPrice = (basePrice: number, discountPct: number) => {
   return basePrice - (basePrice * (discountPct / 100));
 };
 
-// 3. Encontrar la tarifa exacta ignorando las horas y zonas horarias
+// 3. Encontrar la tarifa exacta (Lógica robusta por strings)
 export const findApplicableRate = (
   rates: Rate[], 
   boatId: string, 
@@ -31,23 +30,21 @@ export const findApplicableRate = (
 ) => {
   if (!dateStr || !timeSlot || !boatId) return null;
 
+  // Forzar formato YYYY-MM-DD cortando cualquier hora que venga de más
+  const targetDate = dateStr.split('T')[0]; 
   const duration = getDurationFromTimeSlot(timeSlot);
-  
-  // Convertimos a fecha ISO (YYYY-MM-DD) y luego a número
-  const [year, month, day] = dateStr.split('-');
-  const targetDate = new Date(Number(year), Number(month) - 1, Number(day)).getTime();
 
   return rates.find(r => {
-    if (r.boat_id !== boatId || r.duration_hours !== duration) return false;
+    // Comprobar barco y duración (forzando a número)
+    if (r.boat_id !== boatId || Number(r.duration_hours) !== duration) return false;
+    
     if (!r.seasons?.start_date || !r.seasons?.end_date) return false;
 
-    // Lo mismo para las fechas de la temporada
-    const [sy, sm, sd] = r.seasons.start_date.split('-');
-    const [ey, em, ed] = r.seasons.end_date.split('-');
-    
-    const start = new Date(Number(sy), Number(sm) - 1, Number(sd)).getTime();
-    const end = new Date(Number(ey), Number(em) - 1, Number(ed)).getTime();
+    // Cortar las fechas de temporada a YYYY-MM-DD también
+    const start = r.seasons.start_date.split('T')[0];
+    const end = r.seasons.end_date.split('T')[0];
 
+    // Al ser strings tipo "2026-11-09", la comparación alfabética funciona perfecto para fechas
     return targetDate >= start && targetDate <= end;
   });
 };

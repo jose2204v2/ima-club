@@ -163,6 +163,14 @@ export default function ProposalsPage() {
         return;
       }
 
+         console.log("🔍 RADAR - Buscando tarifa:", { 
+        barcoSeleccionado: selectedBoat, 
+        fechaSeleccionada: date, 
+        horario: timeSlot, 
+        totalTarifasEnBD: rates.length,
+        tarifasDisponibles: rates 
+      });
+
       const rate = findApplicableRate(rates, selectedBoat, date, timeSlot);
       
       if (rate) {

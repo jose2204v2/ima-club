@@ -4,8 +4,8 @@ import { useEffect, useState, useMemo, useRef } from "react";
 import { createClient } from "@/utils/client";
 import { useParams } from "next/navigation";
 import { toast, Toaster } from "sonner"; 
-import { Anchor, Calendar, Clock, CheckCircle2, MessageSquare, Send, Check } from "lucide-react";
 import { motion } from "framer-motion";
+import { Anchor, Calendar, Clock, CheckCircle2, MessageSquare, Send, Check } from "lucide-react";
 
 type Proposal = {
   id: string;

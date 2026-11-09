@@ -241,7 +241,20 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             transition={{ duration: 0.3 }}
             className="h-full"
           >
-            {children}
+                    <div className="flex-1 overflow-y-auto p-4 md:p-8 relative custom-scrollbar">
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={pathname} // <-- La magia ocurre aquí: al cambiar de ruta, se anima de nuevo
+              initial={{ opacity: 0, y: 15 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -15 }}
+              transition={{ duration: 0.2, ease: "easeOut" }}
+              className="h-full"
+            >
+              {children}
+            </motion.div>
+          </AnimatePresence>
+        </div>
           </motion.div>
         </div>
       </main>

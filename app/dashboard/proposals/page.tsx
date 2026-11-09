@@ -3,7 +3,8 @@
 import { useEffect, useState, useMemo, useCallback } from "react";
 import { createClient } from "@/utils/client";
 import ChatModal from "./components/ChatModal";
-import { showToast } from "@/utils/toast";
+import { toast } from "sonner"; // <-- NUEVO SISTEMA DE TOASTS
+import { Plus, MessageSquare, Link2, CheckCircle2, Trash2 } from "lucide-react"; // <-- ICONOS
 
 type Client = { id: string; first_name: string; last_name: string; };
 type Boat = { id: string; name: string; base_price: number; };
@@ -159,7 +160,7 @@ export default function ProposalsPage() {
 
   const handleAddProposal = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!timeSlot) { showToast("Selecciona un horario disponible", "warning"); return; }
+    if (!timeSlot) { toast.warning("Selecciona un horario disponible"); return; }
     setSaving(true);
     setError(null);
     const [availRes, propRes] = await Promise.all([
@@ -169,7 +170,7 @@ export default function ProposalsPage() {
     const existingSlots = [...(availRes.data || []).map(a => a.time_slot), ...(propRes.data || []).map(p => p.time_slot)];
     const conflict = existingSlots.find(slot => isOverlapping(slot, timeSlot));
     if (conflict) {
-      showToast(`Conflicto de horario con ${conflict}`, "error");
+      toast.error(`Conflicto de horario con ${conflict}`);
       setSaving(false);
       return;
     }
@@ -178,11 +179,11 @@ export default function ProposalsPage() {
       base_price: Number(price), total_price: Number(price), status: "borrador"
     }]);
     if (error) {
-      showToast("Error al crear propuesta: " + error.message, "error");
+      toast.error("Error al crear propuesta: " + error.message);
     } else { 
       setIsModalOpen(false); 
       await fetchData();
-      showToast("Propuesta creada con éxito", "success");
+      toast.success("Propuesta creada con éxito");
     }
     setSaving(false);
   };
@@ -191,10 +192,10 @@ export default function ProposalsPage() {
     if (!window.confirm("¿Seguro que quieres eliminar esta propuesta?")) return;
     const { error } = await supabase.from("proposals").delete().eq("id", id);
     if (error) {
-      showToast("Error al borrar: " + error.message, "error");
+      toast.error("Error al borrar: " + error.message);
     } else {
       await fetchData();
-      showToast("Propuesta eliminada", "success");
+      toast.success("Propuesta eliminada");
     }
   };
 
@@ -205,15 +206,24 @@ export default function ProposalsPage() {
       date: p.date, time_slot: p.time_slot, total_price: p.total_price, status: 'pendiente_pago'
     }]);
     if (resError) { 
-      showToast("Error al crear reserva: " + resError.message, "error");
+      toast.error("Error al crear reserva: " + resError.message);
       return; 
     }
     await supabase.from("proposals").update({ status: 'aceptada' }).eq("id", p.id);
     await supabase.from("availability").insert([{
       boat_id: p.boat_id, date: p.date, time_slot: p.time_slot, status: 'reservado'
     }]);
-    showToast("¡Reserva creada con éxito!", "success");
+    toast.success("¡Reserva creada con éxito!");
     await fetchData();
+  };
+
+  // --- NUEVA FUNCIÓN PARA COPIAR EL ENLACE ---
+  const copyClientLink = (proposalId: string) => {
+    const url = `${window.location.origin}/client/${proposalId}`;
+    navigator.clipboard.writeText(url);
+    toast.success("Enlace del portal copiado al portapapeles", {
+      description: "Envíalo al cliente para que vea su propuesta.",
+    });
   };
 
   return (
@@ -223,15 +233,15 @@ export default function ProposalsPage() {
           <h1 className="text-3xl font-bold text-white">Propuestas</h1>
           <p className="text-slate-400 mt-1">Crea ofertas y conviértelas en reservas.</p>
         </div>
-        <button onClick={openModal} className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors w-full sm:w-auto">
-          + Nueva Propuesta
+        <button onClick={openModal} className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors w-full sm:w-auto flex items-center justify-center gap-2">
+          <Plus size={18} />
+          Nueva Propuesta
         </button>
       </div>
 
       {error && <div className="bg-red-500/10 border border-red-500 text-red-500 p-4 rounded-lg">Error: {error}</div>}
 
       <div className="bg-slate-800 rounded-xl border border-slate-700 overflow-hidden">
-        {/* SCROLL HORIZONTAL PARA MOVIL */}
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse whitespace-nowrap">
             <thead>
@@ -275,26 +285,50 @@ export default function ProposalsPage() {
                           {p.status}
                         </span>
                       </td>
-                      <td className="px-6 py-4 text-right space-x-2">
+                      <td className="px-6 py-4 text-right flex items-center justify-end gap-2">
+                        
+                        {/* BOTÓN DE COPIAR ENLACE */}
+                        <button 
+                          onClick={() => copyClientLink(p.id)}
+                          className="text-slate-300 hover:text-white bg-slate-700 hover:bg-slate-600 p-2 rounded-md transition-colors"
+                          title="Copiar enlace para el cliente"
+                        >
+                          <Link2 size={16} />
+                        </button>
+
+                        {/* BOTÓN DE CHAT */}
                         <button 
                           onClick={() => { setChatProposal({ id: p.id, name: p.clients?.first_name || '' }); setIsChatOpen(true); }}
-                          className={`text-white text-sm font-medium px-3 py-1.5 rounded-md transition-colors relative ${
-                            unread > 0 ? 'bg-orange-600 hover:bg-orange-700' : 'bg-slate-600 hover:bg-slate-500'
-                          }`}>
-                          💬 Chat
+                          className={`relative text-white p-2 rounded-md transition-colors ${
+                            unread > 0 ? 'bg-orange-600 hover:bg-orange-700' : 'bg-slate-700 hover:bg-slate-600'
+                          }`}
+                          title="Abrir chat"
+                        >
+                          <MessageSquare size={16} />
                           {unread > 0 && (
-                            <span className="absolute -top-2 -right-2 bg-red-600 text-white text-[10px] font-bold rounded-full w-5 h-5 flex items-center justify-center">
+                            <span className="absolute -top-1.5 -right-1.5 bg-red-600 text-white text-[9px] font-bold rounded-full w-4 h-4 flex items-center justify-center border-2 border-slate-800">
                               {unread}
                             </span>
                           )}
                         </button>
+
+                        {/* BOTÓN CONVERTIR */}
                         {p.status === 'borrador' && (
-                          <button onClick={() => handleConvertToReservation(p)} className="text-white bg-blue-600 hover:bg-blue-700 text-sm font-medium px-4 py-1.5 rounded-md transition-colors shadow-lg shadow-blue-500/20">
-                            🤝 Convertir
+                          <button 
+                            onClick={() => handleConvertToReservation(p)} 
+                            className="text-white bg-blue-600 hover:bg-blue-700 text-sm font-medium px-3 py-2 rounded-md transition-colors shadow-lg shadow-blue-500/20 flex items-center gap-1"
+                          >
+                            <CheckCircle2 size={16} /> Convertir
                           </button>
                         )}
-                        <button onClick={() => handleDeleteProposal(p.id)} className="text-red-400 hover:text-red-300 text-sm font-medium px-3 py-1 bg-red-500/10 rounded-md transition-colors">
-                          🗑️
+
+                        {/* BOTÓN BORRAR */}
+                        <button 
+                          onClick={() => handleDeleteProposal(p.id)} 
+                          className="text-red-400 hover:text-red-300 bg-red-500/10 hover:bg-red-500/20 p-2 rounded-md transition-colors"
+                          title="Eliminar"
+                        >
+                          <Trash2 size={16} />
                         </button>
                       </td>
                     </tr>
@@ -306,7 +340,7 @@ export default function ProposalsPage() {
         </div>
       </div>
 
-      {/* MODAL NUEVA PROPUESTA (Adaptado para móvil) */}
+      {/* MODAL NUEVA PROPUESTA */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
           <div className="bg-slate-800 rounded-xl border border-slate-700 shadow-2xl w-full max-w-lg overflow-hidden max-h-[90vh] flex flex-col">

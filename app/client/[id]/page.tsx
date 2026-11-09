@@ -3,7 +3,7 @@
 import { useEffect, useState, useMemo, useRef } from "react";
 import { createClient } from "@/utils/client";
 import { useParams } from "next/navigation";
-import { showToast } from "@/utils/toast"; // <-- IMPORTAMOS LOS TOASTS
+import { toast } from "sonner"; // <-- Usamos Sonner aquí también
 
 type Proposal = {
   id: string;
@@ -35,11 +35,9 @@ export default function ClientPortalPage() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const supabase = useMemo(() => createClient(), []);
 
-  // 1. Cargar propuesta y chat
   useEffect(() => {
     const loadData = async () => {
       try {
-        // Propuesta
         const { data: prop, error: propError } = await supabase
           .from("proposals")
           .select(`*, boats (name)`)
@@ -49,7 +47,6 @@ export default function ClientPortalPage() {
         if (propError) throw new Error("Error al cargar propuesta: " + propError.message);
         if (prop) setProposal(prop);
 
-        // Conversación (Buscamos con limit(1) para evitar errores de duplicados)
         const { data: initialConvs, error: convError } = await supabase
           .from("conversations")
           .select("id")
@@ -61,7 +58,6 @@ export default function ClientPortalPage() {
         let conv = initialConvs && initialConvs.length > 0 ? initialConvs[0] : null;
 
         if (!conv) {
-          // Si no existe, crearla
           const { data: newConv, error: createError } = await supabase
             .from("conversations")
             .insert([{ proposal_id: proposalId }])
@@ -74,7 +70,6 @@ export default function ClientPortalPage() {
 
         if (conv) {
           setConversationId(conv.id);
-          // Mensajes
           const { data: msgs, error: msgsError } = await supabase
             .from("messages")
             .select("*")
@@ -85,7 +80,7 @@ export default function ClientPortalPage() {
           setMessages(msgs || []);
         }
       } catch (err) {
-        showToast(err instanceof Error ? err.message : "Error al cargar el portal", "error");
+        toast.error(err instanceof Error ? err.message : "Error al cargar el portal");
       } finally {
         setLoading(false);
       }
@@ -94,10 +89,8 @@ export default function ClientPortalPage() {
     if (proposalId) loadData();
   }, [proposalId, supabase]);
 
-  // 2. Tiempo real
   useEffect(() => {
     if (!conversationId) return;
-
     const channel = supabase
       .channel(`chat-client-${conversationId}`)
       .on(
@@ -113,26 +106,16 @@ export default function ClientPortalPage() {
       )
       .subscribe();
 
-    return () => {
-      supabase.removeChannel(channel);
-    };
+    return () => { supabase.removeChannel(channel); };
   }, [conversationId, supabase]);
 
-  // 3. Auto-scroll
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  // 4. Enviar mensaje
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newMessage.trim()) return;
-    
-    if (!conversationId) {
-      showToast("El chat no se ha inicializado. Recarga la página.", "error");
-      return;
-    }
-
+    if (!newMessage.trim() || !conversationId) return;
     setSending(true);
     const msgContent = newMessage;
     setNewMessage("");
@@ -144,7 +127,7 @@ export default function ClientPortalPage() {
     }]).select().single();
 
     if (error) {
-      showToast("Error al enviar: " + error.message, "error");
+      toast.error("Error al enviar: " + error.message);
       setNewMessage(msgContent);
     } else if (data) {
       setMessages((prev) => {
@@ -155,7 +138,6 @@ export default function ClientPortalPage() {
     setSending(false);
   };
 
-  // 5. Aceptar propuesta
   const handleAccept = async () => {
     if (!window.confirm("¿Aceptas esta propuesta oficialmente?")) return;
     
@@ -167,7 +149,7 @@ export default function ClientPortalPage() {
       content: `¡El cliente ha aceptado la propuesta del ${proposal?.boats?.name}!`
     }]);
 
-    showToast("¡Propuesta aceptada! Nos pondremos en contacto contigo.", "success");
+    toast.success("¡Propuesta aceptada! Nos pondremos en contacto contigo.");
   };
 
   if (loading) return <div className="min-h-screen bg-slate-900 text-white flex items-center justify-center">Cargando tu propuesta...</div>;
@@ -175,15 +157,14 @@ export default function ClientPortalPage() {
 
   return (
     <div className="min-h-screen bg-slate-900 text-white flex flex-col items-center py-6 md:py-10 px-4">
+      {/* Importante: Añadimos Toaster de Sonner aquí para que el cliente vea sus notificaciones */}
       <div className="w-full max-w-3xl space-y-4 md:space-y-6">
         
-        {/* Cabecera */}
         <div className="text-center mb-4 md:mb-8">
           <h1 className="text-3xl md:text-4xl font-bold mb-2">⛵ IMA Club</h1>
           <p className="text-sm md:text-base text-slate-400">Tu propuesta de charter exclusivo</p>
         </div>
 
-        {/* Tarjeta Propuesta */}
         <div className="bg-slate-800 p-5 md:p-8 rounded-2xl border border-slate-700 shadow-2xl">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
             <div>
@@ -219,8 +200,8 @@ export default function ClientPortalPage() {
           )}
         </div>
 
-        {/* Chat con el Agente */}
-        <div className="bg-slate-800 rounded-2xl border border-slate-700 overflow-hidden flex flex-col h-[60vh] md:h-[400px]">
+        {/* CHAT CON ALTURA GARANTIZADA PARA EL BOTON */}
+        <div className="bg-slate-800 rounded-2xl border border-slate-700 overflow-hidden flex flex-col h-[calc(100vh-350px)] min-h-[350px] md:h-[400px]">
           <div className="p-4 border-b border-slate-700 bg-slate-900 shrink-0">
             <h3 className="font-bold text-sm md:text-base">💬 Habla con tu agente</h3>
             <p className="text-[10px] md:text-xs text-slate-400">Resuelve cualquier duda sobre tu reserva.</p>
@@ -243,6 +224,7 @@ export default function ClientPortalPage() {
             <div ref={messagesEndRef} />
           </div>
 
+          {/* FORMULARIO CON BOTÓN DE ENVIAR PROTEGIDO (shrink-0) */}
           <form onSubmit={handleSendMessage} className="p-3 border-t border-slate-700 bg-slate-900 flex gap-2 shrink-0">
             <input 
               type="text" 
@@ -251,7 +233,7 @@ export default function ClientPortalPage() {
               placeholder="Escribe tu mensaje..." 
               className="flex-1 bg-slate-800 text-white px-4 py-2 rounded-lg border border-slate-700 focus:outline-none focus:border-blue-500 text-sm"
             />
-            <button type="submit" disabled={sending} className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors disabled:opacity-50 text-sm">
+            <button type="submit" disabled={sending} className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors disabled:opacity-50 text-sm shrink-0">
               {sending ? "..." : "Enviar"}
             </button>
           </form>

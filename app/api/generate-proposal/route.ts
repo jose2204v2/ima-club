@@ -6,7 +6,7 @@ const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 );
 
-// Helpers para calcular la tarifa
+// Helper para calcular la duración
 const getDurationFromTimeSlot = (timeSlot: string): number => {
   if (timeSlot.includes("Full Day") || timeSlot.includes("7h")) return 7;
   return 3.5;
@@ -39,22 +39,26 @@ export async function POST(req: Request) {
     const proposalDate = lead.fecha || new Date(Date.now() + 86400000).toISOString().split('T')[0];
     const timeSlot = lead.duracion || '10:00-13:30 (Morning)';
     const duration = getDurationFromTimeSlot(timeSlot);
-   
 
     // 3. Buscar la tarifa correspondiente
     const { data: rates } = await supabase
-      .from('rates').select('*, seasons(name, start_date, end_date)')
+      .from('rates')
+      .select('*, seasons(name, start_date, end_date)')
       .eq('boat_id', selectedBoat.id)
       .eq('duration_hours', duration);
 
     const applicableRate = rates?.find(r => {
-  if (!r.seasons?.start_date || !r.seasons?.end_date) return false;
-  const targetDate = new Date(proposalDate).getTime();
-  const start = new Date(r.seasons.start_date).getTime();
-  const end = new Date(r.seasons.end_date).getTime();
-  return targetDate >= start && targetDate <= end;
-});
-    let finalPrice = selectedBoat.base_price; // Fallback
+      if (!r.seasons?.start_date || !r.seasons?.end_date) return false;
+      
+      // Comparamos usando strings YYYY-MM-DD para evitar problemas de zona horaria
+      const targetDate = proposalDate.split('T')[0];
+      const start = r.seasons.start_date.split('T')[0];
+      const end = r.seasons.end_date.split('T')[0];
+      
+      return targetDate >= start && targetDate <= end;
+    });
+
+    let finalPrice = selectedBoat.base_price; // Precio de emergencia si no hay tarifa
     if (applicableRate) {
       finalPrice = applicableRate.price - (applicableRate.price * (applicableRate.discount_pct / 100));
     }
@@ -69,17 +73,19 @@ export async function POST(req: Request) {
 
     if (propErr) throw new Error("Error creando propuesta: " + propErr.message);
 
+    // 5. Crear el chat automáticamente
     await supabase.from('conversations').insert([{ proposal_id: proposal.id }]);
 
-    // 5. Generar el mensaje con IA
+    // 6. Generar el mensaje con IA
     const portalLink = `${req.headers.get('origin')}/client/${proposal.id}`;
+    
     const response = await fetch('https://api.deepseek.com/chat/completions', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${process.env.DEEPSEEK_API_KEY}` },
       body: JSON.stringify({
         model: 'deepseek-chat',
         messages: [
-          { role: 'system', content: 'Eres un agente comercial de IMA Club. Redacta un mensaje entusiasta presentando la propuesta. Incluye el enlace.' },
+          { role: 'system', content: 'Eres un agente comercial de IMA Club. Redacta un mensaje entusiasta presentando la propuesta. Incluye el enlace al final.' },
           { role: 'user', content: `Cliente: ${lead.first_name}. Barco: ${selectedBoat.name}. Precio: ${finalPrice}€. Fecha: ${proposalDate}. Enlace: ${portalLink}` }
         ],
         temperature: 0.7,
@@ -89,6 +95,7 @@ export async function POST(req: Request) {
     const aiData = await response.json();
     const message = aiData.choices[0].message.content;
 
+    // 7. Marcar el lead como "contactado"
     await supabase.from('leads').update({ status: 'contactado' }).eq('id', lead.id);
 
     return NextResponse.json({ success: true, proposalId: proposal.id, boatName: selectedBoat.name, message });

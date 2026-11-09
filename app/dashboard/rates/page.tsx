@@ -3,7 +3,7 @@
 import { useEffect, useState, useMemo, useCallback } from "react";
 import { createClient } from "@/utils/client";
 import { toast } from "sonner";
-import { Plus, Trash2, Tag, Calendar } from "lucide-react";
+import { Plus, Trash2, Tag, Calendar, MapPin } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
 type Boat = { id: string; name: string; };
@@ -13,11 +13,14 @@ type Rate = {
   boat_id: string;
   season_id: string;
   duration_hours: number;
+  route: string;
   price: number;
   discount_pct: number;
   boats: { name: string } | null;
   seasons: { name: string } | null;
 };
+
+const ROUTES = ["Estándar", "Es Vedra", "Formentera", "Ruta Norte"];
 
 export default function RatesPage() {
   const [rates, setRates] = useState<Rate[]>([]);
@@ -30,6 +33,7 @@ export default function RatesPage() {
   const [selectedBoat, setSelectedBoat] = useState("");
   const [selectedSeason, setSelectedSeason] = useState("");
   const [duration, setDuration] = useState("3.5");
+  const [route, setRoute] = useState("Estándar");
   const [price, setPrice] = useState("");
   const [discount, setDiscount] = useState("0");
   const [saving, setSaving] = useState(false);
@@ -100,8 +104,8 @@ export default function RatesPage() {
 
     const { error } = await supabase.from("rates").upsert([{
       boat_id: selectedBoat, season_id: selectedSeason, duration_hours: Number(duration),
-      price: Number(price), discount_pct: Number(discount)
-    }], { onConflict: 'boat_id, season_id, duration_hours' });
+      route: route, price: Number(price), discount_pct: Number(discount)
+    }], { onConflict: 'boat_id, season_id, duration_hours, route' });
 
     if (error) toast.error("Error: " + error.message);
     else {
@@ -165,7 +169,7 @@ export default function RatesPage() {
         <div className="flex justify-between items-center mb-4">
           <div>
             <h2 className="text-2xl font-bold text-white tracking-tight">Tarifas por Barco</h2>
-            <p className="text-slate-400 mt-1">Asigna un precio base a cada barco según la temporada y duración.</p>
+            <p className="text-slate-400 mt-1">Precios base según barco, temporada y ruta.</p>
           </div>
           <button onClick={() => setIsModalOpen(true)} className="bg-blue-500/20 hover:bg-blue-500/30 text-blue-300 border border-blue-500/30 px-4 py-2 rounded-lg font-medium transition-all flex items-center gap-2">
             <Plus size={18} /> Nueva Tarifa
@@ -180,6 +184,7 @@ export default function RatesPage() {
                   <th className="px-6 py-4 font-medium">Barco</th>
                   <th className="px-6 py-4 font-medium">Temporada</th>
                   <th className="px-6 py-4 font-medium">Duración</th>
+                  <th className="px-6 py-4 font-medium">Ruta</th>
                   <th className="px-6 py-4 font-medium">Precio Base</th>
                   <th className="px-6 py-4 font-medium">Descuento</th>
                   <th className="px-6 py-4 font-medium">Precio Final</th>
@@ -188,9 +193,9 @@ export default function RatesPage() {
               </thead>
               <tbody className="divide-y divide-white/5">
                 {loading ? (
-                  <tr><td colSpan={7} className="px-6 py-8 text-center text-slate-400">Cargando tarifas...</td></tr>
+                  <tr><td colSpan={8} className="px-6 py-8 text-center text-slate-400">Cargando tarifas...</td></tr>
                 ) : rates.length === 0 ? (
-                  <tr><td colSpan={7} className="px-6 py-8 text-center text-slate-400">No hay tarifas configuradas.</td></tr>
+                  <tr><td colSpan={8} className="px-6 py-8 text-center text-slate-400">No hay tarifas configuradas.</td></tr>
                 ) : (
                   <AnimatePresence>
                     {rates.map((rate) => {
@@ -208,6 +213,11 @@ export default function RatesPage() {
                             </span>
                           </td>
                           <td className="px-6 py-4 text-slate-300">{rate.duration_hours}h</td>
+                          <td className="px-6 py-4">
+                            <span className="inline-flex items-center gap-1 text-xs text-slate-400">
+                              <MapPin size={12} /> {rate.route || 'Estándar'}
+                            </span>
+                          </td>
                           <td className="px-6 py-4 text-slate-400 line-through">{rate.price} €</td>
                           <td className="px-6 py-4 text-orange-400 font-medium">{rate.discount_pct}%</td>
                           <td className="px-6 py-4 text-emerald-400 font-bold text-lg">{finalPrice.toFixed(2)} €</td>
@@ -291,13 +301,21 @@ export default function RatesPage() {
                   </select>
                 </div>
                 <div>
+                  <label className="block text-sm font-medium text-slate-300 mb-1">Ruta</label>
+                  <select value={route} onChange={(e) => setRoute(e.target.value)} className="w-full bg-white/5 text-white px-4 py-2.5 rounded-lg border border-white/10 focus:outline-none focus:border-blue-500 transition-colors">
+                    {ROUTES.map(r => <option key={r} value={r} className="bg-slate-800">{r}</option>)}
+                  </select>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
                   <label className="block text-sm font-medium text-slate-300 mb-1">Precio Base (€)</label>
                   <input type="number" required min="0" step="0.01" value={price} onChange={(e) => setPrice(e.target.value)} className="w-full bg-white/5 text-white px-4 py-2.5 rounded-lg border border-white/10 focus:outline-none focus:border-blue-500 transition-colors" />
                 </div>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-300 mb-1">Descuento (%)</label>
-                <input type="number" min="0" max="100" step="0.1" value={discount} onChange={(e) => setDiscount(e.target.value)} className="w-full bg-white/5 text-white px-4 py-2.5 rounded-lg border border-white/10 focus:outline-none focus:border-blue-500 transition-colors" />
+                <div>
+                  <label className="block text-sm font-medium text-slate-300 mb-1">Descuento (%)</label>
+                  <input type="number" min="0" max="100" step="0.1" value={discount} onChange={(e) => setDiscount(e.target.value)} className="w-full bg-white/5 text-white px-4 py-2.5 rounded-lg border border-white/10 focus:outline-none focus:border-blue-500 transition-colors" />
+                </div>
               </div>
               <div className="pt-4 flex flex-col sm:flex-row gap-3 shrink-0">
                 <button type="button" onClick={() => setIsModalOpen(false)} className="flex-1 bg-white/5 hover:bg-white/10 text-white font-medium py-2.5 rounded-lg transition-colors order-2 sm:order-1">Cancelar</button>

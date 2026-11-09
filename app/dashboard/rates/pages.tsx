@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useCallback } from "react"; // <-- Añadido useCallback
 import { createClient } from "@/utils/client";
 import { toast } from "sonner";
 import { Plus, Trash2, Tag } from "lucide-react";
@@ -35,7 +35,8 @@ export default function RatesPage() {
 
   const supabase = useMemo(() => createClient(), []);
 
-  const fetchData = async () => {
+  // ENVOLVEMOS LA FUNCIÓN EN useCallback
+  const fetchData = useCallback(async () => {
     const [ratesRes, boatsRes, seasonsRes] = await Promise.all([
       supabase.from("rates").select(`*, boats (name), seasons (name)`).order("created_at", { ascending: false }),
       supabase.from("boats").select("id, name").eq("is_active", true),
@@ -46,14 +47,15 @@ export default function RatesPage() {
     if (boatsRes.data) setBoats(boatsRes.data);
     if (seasonsRes.data) setSeasons(seasonsRes.data);
     setLoading(false);
-  };
+  }, [supabase]);
 
+  // AHORA EL EFECTO NO SE QUEJA PORQUE "fetchData" ESTÁ MEMORIZADA
   useEffect(() => {
     let active = true;
     const load = async () => { if (active) await fetchData(); };
     setTimeout(load, 0);
     return () => { active = false; };
-  }, []);
+  }, [fetchData]);
 
   const handleAddRate = async (e: React.FormEvent) => {
     e.preventDefault();
